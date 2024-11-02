@@ -130,7 +130,7 @@ this.app.post("/:agentId/whisper", upload.single('file'), async (req: CustomRequ
           "direct",
         ),
         agent.ensureUserExists(userId, req.body.userName ?? "User", req.body.name ?? "User", "direct"),
-        agent.ensureRoomExists(roomId),
+        // agent.ensureRoomExists(roomId),
       ]);
 
       await Promise.all([
