@@ -41,13 +41,14 @@ export class DiscordClient extends EventEmitter {
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.DirectMessageTyping,
-        GatewayIntentBits.GuildMessageTyping,
         GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageTyping,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageReactions,
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.MessageContent,
       ],
       partials: [
         Partials.Channel,
@@ -84,33 +85,33 @@ export class DiscordClient extends EventEmitter {
 
     this.client.on(
       Events.MessageReactionAdd,
-      this.handleReactionAdd.bind(this),
+      this.handleReactionAdd.bind(this)
     );
     this.client.on(
       Events.MessageReactionRemove,
-      this.handleReactionRemove.bind(this),
+      this.handleReactionRemove.bind(this)
     );
 
     // Handle voice events with the voice manager
     this.client.on(
       "voiceStateUpdate",
-      this.voiceManager.handleVoiceStateUpdate.bind(this.voiceManager),
+      this.voiceManager.handleVoiceStateUpdate.bind(this.voiceManager)
     );
     this.client.on(
       "userStream",
-      this.voiceManager.handleUserStream.bind(this.voiceManager),
+      this.voiceManager.handleUserStream.bind(this.voiceManager)
     );
 
     // Handle a new message with the message manager
     this.client.on(
       Events.MessageCreate,
-      this.messageManager.handleMessage.bind(this.messageManager),
+      this.messageManager.handleMessage.bind(this.messageManager)
     );
 
     // Handle a new interaction
     this.client.on(
       Events.InteractionCreate,
-      this.handleInteractionCreate.bind(this),
+      this.handleInteractionCreate.bind(this)
     );
   }
 
@@ -120,9 +121,9 @@ export class DiscordClient extends EventEmitter {
       try {
         await rest.put(
           Routes.applicationCommands(
-            this.runtime.getSetting("DISCORD_APPLICATION_ID"),
+            this.runtime.getSetting("DISCORD_APPLICATION_ID")
           ),
-          { body: commands },
+          { body: commands }
         );
       } catch (error) {
         console.error(error);
@@ -134,7 +135,7 @@ export class DiscordClient extends EventEmitter {
     console.log(`Logged in as ${readyClient.user?.tag}`);
     console.log("Use this URL to add the bot to your server:");
     console.log(
-      `https://discord.com/api/oauth2/authorize?client_id=${readyClient.user?.id}&permissions=0&scope=bot%20applications.commands`,
+      `https://discord.com/api/oauth2/authorize?client_id=${readyClient.user?.id}&permissions=0&scope=bot%20applications.commands`
     );
     await this.onReady();
   }
@@ -171,7 +172,7 @@ export class DiscordClient extends EventEmitter {
 
     // Generate a unique UUID for the reaction
     const reactionUUID = stringToUuid(
-      `${reaction.message.id}-${user.id}-${emoji}`,
+      `${reaction.message.id}-${user.id}-${emoji}`
     );
 
     // ensure the user id and room id are valid
@@ -183,22 +184,20 @@ export class DiscordClient extends EventEmitter {
     const userName = reaction.message.author.username;
     const name = reaction.message.author.displayName;
     await Promise.all([
-      
-    this.runtime.ensureUserExists(
-      agentId,
-      this.client.user.username,
-      this.runtime.character.name,
-      "discord",
-    ),
-    this.runtime.ensureUserExists(userIdUUID, userName, name, "discord"),
-    this.runtime.ensureRoomExists(roomId),
-  ]);
+      this.runtime.ensureUserExists(
+        agentId,
+        this.client.user.username,
+        this.runtime.character.name,
+        "discord"
+      ),
+      this.runtime.ensureUserExists(userIdUUID, userName, name, "discord"),
+      this.runtime.ensureRoomExists(roomId),
+    ]);
 
-  await Promise.all([
-    this.runtime.ensureParticipantInRoom(userIdUUID, roomId),
-    this.runtime.ensureParticipantInRoom(agentId, roomId),
-  ]);
-
+    await Promise.all([
+      this.runtime.ensureParticipantInRoom(userIdUUID, roomId),
+      this.runtime.ensureParticipantInRoom(agentId, roomId),
+    ]);
 
     // Save the reaction as a message
     await this.runtime.messageManager.createMemory({
@@ -247,13 +246,12 @@ export class DiscordClient extends EventEmitter {
 
     // Generate a unique UUID for the reaction removal
     const reactionUUID = stringToUuid(
-      `${reaction.message.id}-${user.id}-${emoji}-removed`,
+      `${reaction.message.id}-${user.id}-${emoji}-removed`
     );
 
     const agentId = this.runtime.agentId;
     const userName = reaction.message.author.username;
     const name = reaction.message.author.displayName;
-
 
     console.log("reactionUUID", reactionUUID);
     console.log("userIdUUID", userIdUUID);
@@ -263,36 +261,34 @@ export class DiscordClient extends EventEmitter {
     console.log("name", name);
 
     await Promise.all([
-      
-    this.runtime.ensureUserExists(
-      agentId,
-      this.client.user.username,
-      this.runtime.character.name,
-      "discord",
-    ),
-    this.runtime.ensureUserExists(userIdUUID, userName, name, "discord"),
-    this.runtime.ensureRoomExists(roomId),
-  ]);
+      this.runtime.ensureUserExists(
+        agentId,
+        this.client.user.username,
+        this.runtime.character.name,
+        "discord"
+      ),
+      this.runtime.ensureUserExists(userIdUUID, userName, name, "discord"),
+      this.runtime.ensureRoomExists(roomId),
+    ]);
 
-  await Promise.all([
-    this.runtime.ensureParticipantInRoom(userIdUUID, roomId),
-    this.runtime.ensureParticipantInRoom(agentId, roomId),
-  ]);
+    await Promise.all([
+      this.runtime.ensureParticipantInRoom(userIdUUID, roomId),
+      this.runtime.ensureParticipantInRoom(agentId, roomId),
+    ]);
 
-  try {
-    
-    // Save the reaction removal as a message
-    await this.runtime.messageManager.createMemory({
-      id: reactionUUID, // This is the ID of the reaction removal message
-      userId: userIdUUID,
-      content: {
-        text: reactionMessage,
-        source: "discord",
-        inReplyTo: stringToUuid(reaction.message.id), // This is the ID of the original message
-      },
-      roomId,
-      createdAt: Date.now(),
-      embedding: embeddingZeroVector,
+    try {
+      // Save the reaction removal as a message
+      await this.runtime.messageManager.createMemory({
+        id: reactionUUID, // This is the ID of the reaction removal message
+        userId: userIdUUID,
+        content: {
+          text: reactionMessage,
+          source: "discord",
+          inReplyTo: stringToUuid(reaction.message.id), // This is the ID of the original message
+        },
+        roomId,
+        createdAt: Date.now(),
+        embedding: embeddingZeroVector,
       });
     } catch (error) {
       console.error("Error creating reaction removal message:", error);
@@ -307,14 +303,21 @@ export class DiscordClient extends EventEmitter {
   private async handleInteractionCreate(interaction: any) {
     if (!interaction.isCommand()) return;
 
-    switch (interaction.commandName) {
-      case "joinchannel":
-        await this.voiceManager.handleJoinChannelCommand(interaction);
-        break;
-      case "leavechannel":
-        await this.voiceManager.handleLeaveChannelCommand(interaction);
-        break;
-    }
+    await interaction.deferReply({
+      ephemeral: true,
+    });
+    return await interaction.editReply({
+      content: "content.",
+    });
+
+    // switch (interaction.commandName) {
+    //   case "joinchannel":
+    //     await this.voiceManager.handleJoinChannelCommand(interaction);
+    //     break;
+    //   case "leavechannel":
+    //     await this.voiceManager.handleLeaveChannelCommand(interaction);
+    //     break;
+    // }
   }
 
   private async onReady() {

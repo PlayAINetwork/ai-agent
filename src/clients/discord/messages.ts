@@ -42,12 +42,12 @@ export async function sendMessageInChunks(
         content: message.trim(),
       };
 
-      // if (i === 0 && inReplyTo) {
-      //   // Reply to the specified message for the first chunk
-      //   options.reply = {
-      //     messageReference: inReplyTo,
-      //   };
-      // }
+      if (i === 0 && inReplyTo) {
+        // Reply to the specified message for the first chunk
+        options.reply = {
+          messageReference: inReplyTo,
+        };
+      }
 
       if (i === messages.length - 1 && files && files.length > 0) {
         // Attach files to the last message chunk
@@ -116,8 +116,8 @@ export class MessageManager {
       message.interaction ||
       message.author.id === this.client.user?.id /* || message.author?.bot*/
     )
-      return;
-    console.log("handling message");
+      return
+    console.log("handling message")
     const userId = message.author.id as UUID;
     const userName = message.author.username;
     const name = message.author.displayName;

@@ -1,6 +1,6 @@
 {
   "name": "trump",
-  "clients": ["discord", "direct", "telegram"],
+  "clients": ["discord", "direct", "telegram", "twitter"],
   "settings": {
     "model": "gpt-4o-mini",
     "embeddingModel": "text-embedding-3-small",

@@ -196,12 +196,7 @@ export class ClientBase extends EventEmitter {
     // async initialization
     (async () => {
       // Check for Twitter cookies
-      if (this.runtime.getSetting("TWITTER_COOKIES")) {
-        const cookiesArray = JSON.parse(
-          this.runtime.getSetting("TWITTER_COOKIES"),
-        );
-        await this.setCookiesFromArray(cookiesArray);
-      } else {
+  
         console.log("Cookies file path:", cookiesFilePath);
         if (fs.existsSync(cookiesFilePath)) {
           const cookiesArray = JSON.parse(
@@ -218,7 +213,6 @@ export class ClientBase extends EventEmitter {
           const cookies = await this.twitterClient.getCookies();
           fs.writeFileSync(cookiesFilePath, JSON.stringify(cookies), "utf-8");
         }
-      }
 
       let loggedInWaits = 0;
 
@@ -518,6 +512,7 @@ export class ClientBase extends EventEmitter {
     // Cache the search results to the file
     fs.writeFileSync(cacheFile, JSON.stringify(allTweets));
   }
+
 
   async setCookiesFromArray(cookiesArray: any[]) {
     const cookieStrings = cookiesArray.map(
