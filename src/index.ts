@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import fs from "fs";
+import { v4 as uuidv4 } from 'uuid'; 
 import yargs from "yargs";
 import askClaude from "./actions/ask_claude.ts";
 import follow_room from "./actions/follow_room.ts";
@@ -21,6 +22,58 @@ import { TwitterSearchClient } from "./clients/twitter/search.ts";
 import { TwitterInteractionClient } from "./clients/twitter/interactions.ts";
 import { TwitterGenerationClient } from "./clients/twitter/generate.ts";
 import { Coinbase, Wallet } from "@coinbase/coinbase-sdk"; 
+import express from 'express';
+
+const app = express();
+
+app.get('/logs', (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  let logFiles = fs.readdirSync('logs');
+
+  const formatLogData = (filename: string, content: string) => {
+    const [agentName, , date, taskType] = filename.split(/[_\s,]+/);
+    const taskName = taskType.replace('.log', '');
+
+    const parsedContent = content.includes('<POLICY_OVERRIDE>')
+      ? "thinking... analyzing"
+      : content;
+
+    return JSON.stringify({
+      taskId: uuidv4(),  // Generate a new UUID for each log entry
+      agentName,
+      taskName,
+      date: new Date().toISOString(),
+      data: parsedContent,
+    });
+  };
+
+  logFiles.forEach((file) => {
+    const filePath = `logs/${file}`;
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    res.write(`data: ${formatLogData(file, fileContent)}\n\n`);
+  });
+
+  const watcher = fs.watch('logs', (eventType, filename) => {
+    if (filename) {
+      const filePath = `logs/${filename}`;
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        res.write(`data: ${formatLogData(filename, fileContent)}\n\n`);
+      }
+    }
+  });
+
+  req.on("close", () => {
+    watcher.close();
+  });
+});
+
+app.listen(4000, () => {
+  console.log(`Server is running at http://localhost:${4000}`);
+});
 
 interface Arguments {
   character?: string;
@@ -274,6 +327,7 @@ function chat() {
       return;
     }
 
+
     const agentId = characters[0].name.toLowerCase();
     const response = await fetch(`http://localhost:3000/${agentId}/message`, {
       method: "POST",
@@ -295,4 +349,6 @@ function chat() {
 
 console.log("Chat started. Type 'exit' to quit.");
 chat();
+
+
 
