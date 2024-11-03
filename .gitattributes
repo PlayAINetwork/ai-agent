@@ -1,5 +1,4 @@
 node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd filter=lfs diff=lfs merge=lfs -text
-node_modules/** filter=lfs diff=lfs merge=lfs -text
 node_modules/**/*.gitattributes !filter !diff !merge
 node_modules/**/*.gitignore !filter !diff !merge
 node_modules/**/*.gitkeep !filter !diff !merge
