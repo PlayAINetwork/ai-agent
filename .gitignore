@@ -29,5 +29,4 @@ tweetcache/
 twitter_cookies.json
 timeline_cache.json
 
-*.sqlite
-characters/
+*.sqlite/
