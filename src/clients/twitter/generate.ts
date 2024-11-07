@@ -1,7 +1,7 @@
 import { Tweet } from "agent-twitter-client";
 import fs from "fs";
 import { composeContext } from "../../core/context.ts";
-import { log_to_file } from "../../core/logger.ts";
+// import { log_to_file } from "../../core/logger.ts";
 import { embeddingZeroVector } from "../../core/memory.ts";
 import { IAgentRuntime } from "../../core/types.ts";
 import { stringToUuid } from "../../core/uuid.ts";
@@ -29,16 +29,17 @@ Your response should not contain any questions. Brief, concise statements only. 
 
 export class TwitterGenerationClient extends ClientBase {
   onReady() {
-    const generateNewTweetLoop = () => {
-      this.generateNewTweet();
-      setTimeout(
-        generateNewTweetLoop,
-        20 * 60 * 1000, // Changed interval to 20 minutes
-      );
-    };
-    // setTimeout(() => {
-      generateNewTweetLoop();
-    // }, 5 * 60 * 1000); // Wait 5 minutes before starting the loop
+    this.generateMultipleTweets(10);
+    // const generateNewTweetLoop = () => {
+    //   this.generateNewTweet();
+    //   setTimeout(
+    //     generateNewTweetLoop,
+    //     20 * 60 * 1000, // Changed interval to 20 minutes
+    //   );
+    // };
+    // // setTimeout(() => {
+    //   generateNewTweetLoop();
+    // // }, 5 * 60 * 1000); // Wait 5 minutes before starting the loop
   }
 
   constructor(runtime: IAgentRuntime) {
@@ -48,8 +49,16 @@ export class TwitterGenerationClient extends ClientBase {
     });
   }
 
+  private async generateMultipleTweets(count: number) {
+    //`Generating ${count} new tweets`);
+    for (let i = 0; i < count; i++) {
+      //`Generating tweet ${i + 1} of ${count}`);
+      await this.generateNewTweet();
+    }
+  }
+
   private async generateNewTweet() {
-    console.log("Generating new tweet");
+    //"Generating new tweet");
     try {
       await this.runtime.ensureUserExists(
         this.runtime.agentId,
@@ -102,10 +111,10 @@ export class TwitterGenerationClient extends ClientBase {
       const datestr = new Date().toUTCString().replace(/:/g, "-");
 
       // log context to file
-      log_to_file(
-        `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_generate_context`,
-        context,
-      );
+      // log_to_file(
+      //   `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_generate_context`,
+      //   context,
+      // );
 
       const newTweetContent = await this.runtime.completion({
         context,
@@ -117,11 +126,11 @@ export class TwitterGenerationClient extends ClientBase {
         // presence_penalty: 0.7,
         model: this.runtime.getSetting("XAI_MODEL") ? this.runtime.getSetting("XAI_MODEL") : "gpt-4o-mini",
       });
-      console.log("newTweetContent", newTweetContent);
-      log_to_file(
-        `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_generate_response`,
-        JSON.stringify(newTweetContent),
-      );
+      //"newTweetContent", newTweetContent);
+      // log_to_file(
+      //   `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_generate_response`,
+      //   JSON.stringify(newTweetContent),
+      // );
 
       const slice = newTweetContent.replaceAll(/\\n/g, "\n").trim();
 
@@ -144,11 +153,11 @@ export class TwitterGenerationClient extends ClientBase {
             await this.twitterClient.sendTweet(content),
         );
 
-        console.log("send tweet result:\n", result);
+        //"send tweet result:\n", result);
 
         // read the body of the response
         const body = await result.json();
-        console.log("send tweet body:\n", body);
+        //"send tweet body:\n", body);
         const tweetResult = body.data.create_tweet.tweet_results.result;
 
         const tweet = {
@@ -194,7 +203,7 @@ export class TwitterGenerationClient extends ClientBase {
           console.error("Error sending tweet:", error);
         }
       } else {
-        console.log("Dry run, not sending tweet:", newTweetContent);
+        console.log("Dry run, not sending tweet: ", newTweetContent);
       }
     } catch (error) {
       console.error("Error generating new tweet:", error);

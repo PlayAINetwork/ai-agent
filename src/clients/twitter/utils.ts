@@ -39,7 +39,7 @@ export async function buildConversationThread(
 
   async function processThread(currentTweet: Tweet) {
     if (!currentTweet) {
-      console.log("No current tweet found");
+      //"No current tweet found");
       return;
     }
     // check if the current tweet has already been saved
@@ -47,7 +47,7 @@ export async function buildConversationThread(
       stringToUuid(currentTweet.id),
     );
     if (!memory) {
-      console.log("Creating memory for tweet", currentTweet.id);
+      //"Creating memory for tweet", currentTweet.id);
       const roomId = stringToUuid(currentTweet.conversationId);
       const userId = stringToUuid(currentTweet.userId);
       await client.runtime.ensureRoomExists(roomId);
@@ -110,9 +110,9 @@ export async function sendTweetChunks(
     const result = await client.requestQueue.add(
       async () => await client.twitterClient.sendTweet(chunk.replaceAll(/\\n/g, "\n").trim(), inReplyTo),
     );
-    console.log("send tweet result:\n", result);
+    //"send tweet result:\n", result);
     const body = await result.json();
-    console.log("send tweet body:\n", body);
+    //"send tweet body:\n", body);
     const tweetResult = body.data.create_tweet.tweet_results.result;
 
     const finalTweet = {

@@ -1,7 +1,7 @@
 import { SearchMode, Tweet } from "agent-twitter-client";
 import fs from "fs";
 import { composeContext } from "../../core/context.ts";
-import { log_to_file } from "../../core/logger.ts";
+// import { log_to_file } from "../../core/logger.ts";
 import {
   messageCompletionFooter,
   shouldRespondFooter,
@@ -89,7 +89,7 @@ export class TwitterInteractionClient extends ClientBase {
   }
 
   async handleTwitterInteractions() {
-    console.log("Checking Twitter interactions");
+    //"Checking Twitter interactions");
     try {
       // Check for mentions
       const tweetCandidates = (
@@ -114,7 +114,7 @@ export class TwitterInteractionClient extends ClientBase {
           !this.lastCheckedTweetId ||
           parseInt(tweet.id) > this.lastCheckedTweetId
         ) {
-          console.log("Processing tweet", tweet.id);
+          // //"Processing tweet", tweet.id);
           const conversationId = tweet.conversationId;
 
           const roomId = stringToUuid(conversationId);
@@ -185,7 +185,7 @@ export class TwitterInteractionClient extends ClientBase {
         console.error("Error saving latest checked tweet ID to file:", error);
       }
 
-      console.log("Finished checking Twitter interactions");
+      //"Finished checking Twitter interactions");
     } catch (error) {
       console.error("Error handling Twitter interactions:", error);
     }
@@ -199,16 +199,16 @@ export class TwitterInteractionClient extends ClientBase {
     message: Memory;
   }) {
     if (tweet.username === this.runtime.getSetting("TWITTER_USERNAME")) {
-      console.log("skipping tweet from bot itself", tweet.id);
+      //"skipping tweet from bot itself", tweet.id);
       // Skip processing if the tweet is from the bot itself
       return;
     }
 
     if (!message.content.text) {
-      console.log("skipping tweet with no text", tweet.id);
+      //"skipping tweet with no text", tweet.id);
       return { text: "", action: "IGNORE" };
     }
-    console.log("handling tweet", tweet.id);
+    //"handling tweet", tweet.id);
     const formatTweet = (tweet: Tweet) => {
       return `  ID: ${tweet.id}
   From: ${tweet.name} (@${tweet.username})
@@ -251,7 +251,7 @@ export class TwitterInteractionClient extends ClientBase {
       await this.runtime.messageManager.getMemoryById(tweetId);
 
     if (!tweetExists) {
-      console.log("tweet does not exist, saving");
+      //"tweet does not exist, saving");
       const userIdUUID = stringToUuid(tweet.userId as string);
       const roomId = stringToUuid(tweet.conversationId);
 
@@ -271,7 +271,7 @@ export class TwitterInteractionClient extends ClientBase {
       this.saveRequestMessage(message, state);
     }
 
-    console.log("composeState done");
+    //"composeState done");
 
     const shouldRespondContext = composeContext({
       state,
@@ -284,7 +284,7 @@ export class TwitterInteractionClient extends ClientBase {
     });
 
     if (!shouldRespond) {
-      console.log("Not responding to message");
+      //"Not responding to message");
       return { text: "", action: "IGNORE" };
     }
 
@@ -296,10 +296,10 @@ export class TwitterInteractionClient extends ClientBase {
     const datestr = new Date().toUTCString().replace(/:/g, "-");
 
     // log context to file
-    log_to_file(
-      `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_interactions_context`,
-      context,
-    );
+    // log_to_file(
+    //   `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_interactions_context`,
+    //   context,
+    // );
 
     const response = await this.runtime.messageCompletion({
       context,
@@ -310,22 +310,22 @@ export class TwitterInteractionClient extends ClientBase {
       model: this.runtime.getSetting("XAI_MODEL") ? this.runtime.getSetting("XAI_MODEL") : "gpt-4o-mini",
     });
 
-    console.log("response", response);
+    //"response", response);
 
-    console.log("tweet is", tweet);
+    //"tweet is", tweet);
 
     const stringId = stringToUuid(tweet.id);
 
-    console.log("stringId is", stringId, "while tweet.id is", tweet.id);
+    //"stringId is", stringId, "while tweet.id is", tweet.id);
 
     response.inReplyTo = stringId;
 
-    console.log("response is", response);
+    //"response is", response);
 
-    log_to_file(
-      `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_interactions_response`,
-      JSON.stringify(response),
-    );
+    // log_to_file(
+    //   `${this.runtime.getSetting("TWITTER_USERNAME")}_${datestr}_interactions_response`,
+    //   JSON.stringify(response),
+    // );
 
     if (response.text) {
       try {
@@ -353,7 +353,7 @@ export class TwitterInteractionClient extends ClientBase {
 
           await this.runtime.processActions(message, responseMessages, state);
         } else {
-          console.log("Dry run, not sending tweet:", response.text);
+          //"Dry run, not sending tweet:", response.text);
         }
         const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
         // f tweets folder dont exist, create

@@ -197,7 +197,7 @@ export class ClientBase extends EventEmitter {
     (async () => {
       // Check for Twitter cookies
   
-        console.log("Cookies file path:", cookiesFilePath);
+        //"Cookies file path:", cookiesFilePath);
         if (fs.existsSync(cookiesFilePath)) {
           const cookiesArray = JSON.parse(
             fs.readFileSync(cookiesFilePath, "utf-8"),
@@ -209,7 +209,7 @@ export class ClientBase extends EventEmitter {
             this.runtime.getSetting("TWITTER_PASSWORD"),
             this.runtime.getSetting("TWITTER_EMAIL"),
           );
-          console.log("Logged in to Twitter");
+          //"Logged in to Twitter");
           const cookies = await this.twitterClient.getCookies();
           fs.writeFileSync(cookiesFilePath, JSON.stringify(cookies), "utf-8");
         }
@@ -217,7 +217,7 @@ export class ClientBase extends EventEmitter {
       let loggedInWaits = 0;
 
       while (!(await this.twitterClient.isLoggedIn())) {
-        console.log("Waiting for Twitter login");
+        //"Waiting for Twitter login");
         await new Promise((resolve) => setTimeout(resolve, 2000));
         if (loggedInWaits > 10) {
           console.error("Failed to login to Twitter");
@@ -251,7 +251,7 @@ export class ClientBase extends EventEmitter {
         console.error("Failed to get user ID");
         return;
       }
-      console.log("Twitter user ID:", userId);
+      //"Twitter user ID:", userId);
       this.twitterUserId = userId;
 
       await this.populateTimeline();
@@ -266,7 +266,7 @@ export class ClientBase extends EventEmitter {
     return homeTimeline.filter((t) =>
       t.__typename !== "TweetWithVisibilityResults"
     ).map((tweet) => {
-      console.log("tweet is", tweet);
+      //"tweet is", tweet);
       const obj = {
         id: tweet.rest_id,
         name: tweet.name ?? tweet.core?.user_results?.result?.legacy.name,
@@ -293,7 +293,7 @@ export class ClientBase extends EventEmitter {
           ) ?? [],
       };
 
-      console.log("obj is", obj);
+      //"obj is", obj);
 
       return obj;
     });
@@ -398,14 +398,14 @@ export class ClientBase extends EventEmitter {
               : undefined,
           } as Content;
 
-          console.log("Creating memory for tweet", tweet.id);
+          //"Creating memory for tweet", tweet.id);
 
           // check if it already exists
           const memory = await this.runtime.messageManager.getMemoryById(
             stringToUuid(tweet.id),
           );
           if (memory) {
-            console.log("Memory already exists, skipping timeline population");
+            //"Memory already exists, skipping timeline population");
             break;
           }
 
@@ -419,9 +419,9 @@ export class ClientBase extends EventEmitter {
           });
         }
 
-        console.log(
-          `Populated ${tweetsToSave.length} missing tweets from the cache.`,
-        );
+        // //
+        //   `Populated ${tweetsToSave.length} missing tweets from the cache.`,
+        // );
         return;
       }
     }
@@ -538,7 +538,7 @@ export class ClientBase extends EventEmitter {
         recentMessage.length > 0 &&
         recentMessage[0].content === message.content
       ) {
-        console.log("Message already saved", recentMessage[0].id);
+        //"Message already saved", recentMessage[0].id);
       } else {
         await this.runtime.messageManager.createMemory({
           ...message,

@@ -39,7 +39,7 @@ describe("buildConversationThread", () => {
         runtime.getSetting("TWITTER_USERNAME") +
         "_cookies.json"
     );
-    console.log("Cookies file path:", cookiesFilePath);
+    //"Cookies file path:", cookiesFilePath);
     if (fs.existsSync(cookiesFilePath)) {
       const cookiesArray = JSON.parse(
         fs.readFileSync(cookiesFilePath, "utf-8")
@@ -57,13 +57,13 @@ describe("buildConversationThread", () => {
 
     // Fetch the tweet from the API
     const tweet = await client.getTweet(tweetId);
-    console.log("Original tweet:", JSON.stringify(tweet, null, 2));
+    //"Original tweet:", JSON.stringify(tweet, null, 2));
 
     // Build the conversation thread
     const thread = await buildConversationThread(tweet, client);
 
-    console.log("Generated conversation thread:");
-    console.log(thread);
+    //"Generated conversation thread:");
+    //thread);
 
     // Add assertions based on the expected structure and content of the thread
     // expect(thread.includes("By: Aya Bochman (@ayaboch)")).toBe(true);

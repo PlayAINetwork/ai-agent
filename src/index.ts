@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import yargs from "yargs";
+import  { Request, Response } from 'express';
 import askClaude from "./actions/ask_claude.ts";
 import follow_room from "./actions/follow_room.ts";
 import mute_room from "./actions/mute_room.ts";
@@ -22,9 +23,91 @@ import { TwitterInteractionClient } from "./clients/twitter/interactions.ts";
 import { TwitterGenerationClient } from "./clients/twitter/generate.ts";
 import { Coinbase, Wallet } from "@coinbase/coinbase-sdk"; 
 import express from 'express';
+import cors from 'cors';
+import OpenAI from "openai";
+import { v4 as uuidv4 } from 'uuid';
+
+const openai = new OpenAI({
+  baseURL: "https://api.deepinfra.com/v1/openai",
+  apiKey: "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+});
  
   const app = express();
   app.use(express.json());
+  app.use(cors());
+
+  interface Memory {
+    id: string;
+    userId: string;
+    agentId: string;
+    content: string;
+    createdAt: string;
+    updatedAt?: string;
+  }
+  
+  let memories: Memory[] = [];
+  
+  // POST /memories - Create a memory
+  app.post('/memories', (req: Request, res: Response) => {
+    const { userId, agentId, content } = req.body;
+  
+    const newMemory: Memory = {
+      id: uuidv4(),
+      userId,
+      agentId,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+  
+    memories.push(newMemory);
+    res.status(201).json({ message: 'Memory created successfully', memory: newMemory });
+  });
+  
+  // GET /memories - Retrieve memories
+  app.get('/memories', (req: Request, res: Response) => {
+    const { userId, agentId } = req.query;
+  
+    let filteredMemories = memories;
+  
+    if (userId) {
+      filteredMemories = filteredMemories.filter(memory => memory.userId === userId);
+    }
+    if (agentId) {
+      filteredMemories = filteredMemories.filter(memory => memory.agentId === agentId);
+    }
+  
+    res.status(200).json({ memories: filteredMemories });
+  });
+  
+  // PUT /memories/:id - Update a memory by ID
+  app.put('/memories/:id', (req: Request<{ id: string }>, res: any) => {
+    const { id } = req.params;
+    const { content } = req.body;
+  
+    const memoryIndex = memories.findIndex(memory => memory.id === id);
+    if (memoryIndex === -1) {
+      return res.status(404).json({ message: 'Memory not found' });
+    }
+  
+    memories[memoryIndex].content = content;
+    memories[memoryIndex].updatedAt = new Date().toISOString();
+    res.status(200).json({ message: 'Memory updated successfully', memory: memories[memoryIndex] });
+  });
+  
+  // DELETE /memories/:id - Delete a memory by ID
+  app.delete('/memories/:id', (req: Request<{ id: string }>, res: any) => {
+    const { id } = req.params;
+  
+    const memoryIndex = memories.findIndex(memory => memory.id === id);
+    if (memoryIndex === -1) {
+      return res.status(404).json({ message: 'Memory not found' });
+    }
+  
+    memories.splice(memoryIndex, 1);
+    res.status(200).json({ message: 'Memory deleted successfully' });
+  });
+  
+
   app.post('/replaceCharacterFile', (req, res) => {
     const { filename, fileContent } = req.body;
     const characterFilePath = `characters/${filename}.json`;
@@ -185,8 +268,8 @@ async function startAgent(character: Character) {
   const runtime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
@@ -199,14 +282,14 @@ async function startAgent(character: Character) {
       mute_room,
     ],
   });
-
+  
   console.log("runtime", runtime);
-
+  
   const directRuntime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
@@ -236,22 +319,22 @@ async function startAgent(character: Character) {
 
   const clients = [];
 
-  // if (argv.telegram || character.clients.map((str) => str.toLowerCase()).includes("telegram")) {
-  //   console.log("🔄 Telegram client enabled, starting initialization...");
-  //   try {
-  //     const botToken = character.settings?.secrets?.TELEGRAM_BOT_TOKEN ?? settings.TELEGRAM_BOT_TOKEN;
-  //     if (!botToken) {
-  //       throw new Error(`Telegram bot token is not set for character ${character.name}.`);
-  //     }
+  if (argv.telegram || character.clients.map((str) => str.toLowerCase()).includes("telegram")) {
+    console.log("🔄 Telegram client enabled, starting initialization...");
+    try {
+      const botToken = character.settings?.secrets?.TELEGRAM_BOT_TOKEN ?? settings.TELEGRAM_BOT_TOKEN;
+      if (!botToken) {
+        throw new Error(`Telegram bot token is not set for character ${character.name}.`);
+      }
 
-  //     const telegramClient = new TelegramClient(runtime, botToken);
-  //     await telegramClient.start();
-  //     console.log(`✅ Telegram client successfully started for character ${character.name}`);
-  //     clients.push(telegramClient);
-  //   } catch (error) {
-  //     console.error(`❌ Failed to initialize Telegram client for ${character.name}:`, error);
-  //   }
-  // }
+      const telegramClient = new TelegramClient(runtime, botToken);
+      await telegramClient.start();
+      console.log(`✅ Telegram client successfully started for character ${character.name}`);
+      clients.push(telegramClient);
+    } catch (error) {
+      console.error(`❌ Failed to initialize Telegram client for ${character.name}:`, error);
+    }
+  }
 
   if (character.clients.map((str) => str.toLowerCase()).includes("twitter")) {
     const { twitterInteractionClient, twitterSearchClient, twitterGenerationClient } = await startTwitter(runtime);
