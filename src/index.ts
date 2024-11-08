@@ -23,11 +23,18 @@ import { TwitterGenerationClient } from "./clients/twitter/generate.ts";
 import { Coinbase, Wallet } from "@coinbase/coinbase-sdk"; 
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid'; 
+import cors from 'cors';
+import OpenAI from "openai";
 
+
+const openai = new OpenAI({
+  baseURL: "https://api.deepinfra.com/v1/openai",
+  apiKey: "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+});
 const app = express();
 
-
  app.use(express.json());
+ app.use(cors());
   app.post('/replaceCharacterFile', (req, res) => {
     const { filename, fileContent } = req.body;
     const characterFilePath = `characters/${filename}.json`;
@@ -36,7 +43,22 @@ const app = express();
     res.send(`File ${characterFilePath} replaced successfully`);
   });
 
+app.get('/getCharacterFile', (req, res) => {
+  const { filename } = req.query;
+  const characterFilePath = `characters/${filename}.json`;
 
+  try {
+    if (fs.existsSync(characterFilePath)) {
+      const fileContent = fs.readFileSync(characterFilePath, 'utf8');
+      res.json(JSON.parse(fileContent));
+    } else {
+      res.status(404).send(`File ${characterFilePath} not found`);
+    }
+  } catch (error) {
+    res.status(500).send(`Error reading file: ${error.message}`);
+  }
+});
+ 
 app.get('/logs', (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -234,8 +256,8 @@ async function startAgent(character: Character) {
   const runtime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
@@ -248,19 +270,19 @@ async function startAgent(character: Character) {
       mute_room,
     ],
   });
-
   console.log("runtime", runtime);
 
   const directRuntime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
     actions: [...defaultActions],
   });
+
 
   async function startTwitter(runtime: IAgentRuntime) {
     console.log("Starting search client");
