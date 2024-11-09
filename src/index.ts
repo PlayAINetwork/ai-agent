@@ -22,9 +22,20 @@ import { TwitterInteractionClient } from "./clients/twitter/interactions.ts";
 import { TwitterGenerationClient } from "./clients/twitter/generate.ts";
 import { Coinbase, Wallet } from "@coinbase/coinbase-sdk"; 
 import express from 'express';
- 
-  const app = express();
-  app.use(express.json());
+import { v4 as uuidv4 } from 'uuid'; 
+import cors from 'cors';
+import OpenAI from "openai";
+import { DiscordClient } from "./clients/discord/index.ts";
+
+
+const openai = new OpenAI({
+  baseURL: "https://api.deepinfra.com/v1/openai",
+  apiKey: "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+});
+const app = express();
+
+ app.use(express.json());
+ app.use(cors());
   app.post('/replaceCharacterFile', (req, res) => {
     const { filename, fileContent } = req.body;
     const characterFilePath = `characters/${filename}.json`;
@@ -33,8 +44,100 @@ import express from 'express';
     res.send(`File ${characterFilePath} replaced successfully`);
   });
 
-app.listen(3003, () => {
-  console.log('Server is running on port 3001');
+app.get('/getCharacterFile', (req, res) => {
+  const { filename } = req.query;
+  const characterFilePath = `characters/${filename}.json`;
+
+  try {
+    if (fs.existsSync(characterFilePath)) {
+      const fileContent = fs.readFileSync(characterFilePath, 'utf8');
+      res.json(JSON.parse(fileContent));
+    } else {
+      res.status(404).send(`File ${characterFilePath} not found`);
+    }
+  } catch (error) {
+    res.status(500).send(`Error reading file: ${error.message}`);
+  }
+});
+ 
+app.get('/logs', (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  // Default pagination settings
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+
+  let logFiles = fs.readdirSync('logs');
+
+  // Slice logFiles array based on pagination
+  const paginatedLogFiles = logFiles.slice(startIndex, endIndex);
+
+  const formatLogData = (filename, content) => {
+    const [agentName, , date] = filename.split(/[_\s,]+/);
+
+    // Define taskName based on filename patterns
+    let taskName;
+    if (filename.includes('search_context')) {
+      taskName = 'search context';
+    } else if (filename.includes('interaction_context')) {
+      taskName = 'interaction context';
+    } else if (filename.includes('generate_context')) {
+      taskName = 'generate context';
+    } else if (filename.includes('generate_response')) {
+      taskName = 'generate response';
+    } else if (filename.includes('interaction_response')) {
+      taskName = 'interaction response';
+    } else if (filename.includes('search_response')) {
+      taskName = 'search response';
+    } else if (filename.includes('search')) {
+      taskName = 'searching tweets';
+    } else {
+      // Default task name if none match
+      taskName = filename.split(/[_\s,]+/)[3]?.replace('.log', '') || 'unknown task';
+    }
+
+    const parsedContent = content.includes('<POLICY_OVERRIDE>')
+      ? "thinking... analyzing"
+      : content;
+
+    return JSON.stringify({
+      taskId: uuidv4(),
+      agentName,
+      taskName,
+      date: new Date().toISOString(),
+      data: parsedContent,
+    });
+  };
+
+  // Send initial batch of log entries
+  paginatedLogFiles.forEach((file) => {
+    const filePath = `logs/${file}`;
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    res.write(`data: ${formatLogData(file, fileContent)}\n\n`);
+  });
+
+  // Watch for new log entries
+  const watcher = fs.watch('logs', (eventType, filename) => {
+    if (filename) {
+      const filePath = `logs/${filename}`;
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        res.write(`data: ${formatLogData(filename, fileContent)}\n\n`);
+      }
+    }
+  });
+
+  req.on("close", () => {
+    watcher.close();
+  });
+});
+
+app.listen(4000, () => {
+  console.log(`Server is running at http://localhost:${4000}`);
 });
 
 interface Arguments {
@@ -185,8 +288,8 @@ async function startAgent(character: Character) {
   const runtime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
@@ -199,19 +302,56 @@ async function startAgent(character: Character) {
       mute_room,
     ],
   });
-
   console.log("runtime", runtime);
 
   const directRuntime = new AgentRuntime({
     databaseAdapter: db,
     token,
-    serverUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
+    serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
     actions: [...defaultActions],
   });
+
+  async function startTelegram(runtime: IAgentRuntime, character: Character) {
+    console.log("🔍 Attempting to start Telegram bot...");
+    
+    const botToken =
+      character.settings?.secrets?.TELEGRAM_BOT_TOKEN ??
+      settings.TELEGRAM_BOT_TOKEN;
+  
+    if (!botToken) {
+      console.error(
+        `❌ Telegram bot token is not set for character ${character.name}.`
+      );
+      return null;
+    }
+  
+    console.log("✅ Bot token found, initializing Telegram client...");
+  
+    try {
+      console.log("Creating new TelegramClient instance...");
+      const telegramClient = new TelegramClient(runtime, botToken);
+      
+      console.log("Calling start() on TelegramClient...");
+      await telegramClient.start();
+      
+      console.log(`✅ Telegram client successfully started for character ${character.name}`);
+      return telegramClient;
+    } catch (error) {
+      console.error(`❌ Error creating/starting Telegram client for ${character.name}:`, error);
+      return null;
+    }
+  }
+
+
+  function startDiscord(runtime: IAgentRuntime) {
+    const discordClient = new DiscordClient(runtime);
+    return discordClient;
+  }
+
 
   async function startTwitter(runtime: IAgentRuntime) {
     console.log("Starting search client");
@@ -236,22 +376,24 @@ async function startAgent(character: Character) {
 
   const clients = [];
 
-  // if (argv.telegram || character.clients.map((str) => str.toLowerCase()).includes("telegram")) {
-  //   console.log("🔄 Telegram client enabled, starting initialization...");
-  //   try {
-  //     const botToken = character.settings?.secrets?.TELEGRAM_BOT_TOKEN ?? settings.TELEGRAM_BOT_TOKEN;
-  //     if (!botToken) {
-  //       throw new Error(`Telegram bot token is not set for character ${character.name}.`);
-  //     }
+  if (character.clients.map((str) => str.toLowerCase()).includes("discord")) {
+    const discordClient = startDiscord(runtime);
+    clients.push(discordClient);
+  }
 
-  //     const telegramClient = new TelegramClient(runtime, botToken);
-  //     await telegramClient.start();
-  //     console.log(`✅ Telegram client successfully started for character ${character.name}`);
-  //     clients.push(telegramClient);
-  //   } catch (error) {
-  //     console.error(`❌ Failed to initialize Telegram client for ${character.name}:`, error);
-  //   }
-  // }
+
+  if (
+    (argv.telegram || character.clients.map((str) => str.toLowerCase()).includes("telegram"))
+  ) {
+    console.log("🔄 Telegram client enabled, starting initialization...");
+    const telegramClient = await startTelegram(runtime, character);
+    if (telegramClient) {
+      console.log("✅ Successfully added Telegram client to active clients");
+      clients.push(telegramClient);
+    } else {
+      console.log("❌ Failed to initialize Telegram client");
+    }
+  }
 
   if (character.clients.map((str) => str.toLowerCase()).includes("twitter")) {
     const { twitterInteractionClient, twitterSearchClient, twitterGenerationClient } = await startTwitter(runtime);
@@ -289,7 +431,6 @@ function chat() {
       return;
     }
 
-
     const agentId = characters[0].name.toLowerCase();
     const response = await fetch(`http://localhost:3000/${agentId}/message`, {
       method: "POST",
@@ -311,6 +452,3 @@ function chat() {
 
 console.log("Chat started. Type 'exit' to quit.");
 chat();
-
-
-
