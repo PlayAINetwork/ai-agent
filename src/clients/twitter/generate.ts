@@ -26,12 +26,9 @@ About {{agentName}} (@{{twitterUserName}}):
 {{characterPostExamples}}
 
 # Task: Generate a post in the voice and style of {{agentName}}, aka @{{twitterUserName}}
-
-Write a single sentence post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Strictly write something totally different than previous posts. Don’t follow a similar pattern or format of sentences that makes the post quite obvious that it’s been generated with AI. 
-
-Do not add commentary or acknowledge this request, just write the post within 280 characters.
-
-Your response should be unhinged with slangs and slurs, and does not contain any questions, or filler words. Write it in first person perspective, and share thought as {{agentName}}, aka @{{twitterUserName}}. Stay brief, use concise statements only. No emojis and hashtags. Use \\n\\n (double spaces) between statements only if necessary.`
+Write a single sentence shitpost that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly) without forgetging {{rules}} and tag {{tags}} if relevant to the context of the post, from the perspective of {{agentName}}. Write something totally different than 10 of the previous posts. Have differnt formats for each post. Feel free to use ascii for art and random shitposts. 
+Do not add commentary or ackwowledge this request, just write the post within 200 characters. Make sure it contains cuss words and mean statements.
+Your response should not contain any questions. Brief, concise statements only. No emojis. Use \\n\\n (double spaces) between statements.`;
 
 export class TwitterGenerationClient extends ClientBase {
   onReady() {

@@ -83,7 +83,7 @@ app.get('/logs', (req, res) => {
     });
   };
 
-  logFiles.forEach((file) => {
+   paginatedLogFiles.forEach((file) => {
     const filePath = `logs/${file}`;
     const fileContent = fs.readFileSync(filePath, 'utf8');
     res.write(`data: ${formatLogData(file, fileContent)}\n\n`);
