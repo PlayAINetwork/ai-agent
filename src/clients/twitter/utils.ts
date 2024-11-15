@@ -28,6 +28,14 @@ export const isValidTweet = (tweet: Tweet): boolean => {
   );
 };
 
+export default function getRandomItems<T>(array: T[], numItems: number): T[] {
+  const shuffled = array.slice(); // Create a copy of the array to shuffle
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1)); // Random index
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // Swap elements
+  }
+  return shuffled.slice(0, numItems); // Return the first 'numItems' elements
+}
 
 
 export async function buildConversationThread(
