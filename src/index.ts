@@ -289,7 +289,7 @@ async function startAgent(character: Character) {
     databaseAdapter: db,
     token,
     serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
-    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    model: "mistralai/Mistral-Nemo-Instruct-2407",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],
@@ -308,7 +308,7 @@ async function startAgent(character: Character) {
     databaseAdapter: db,
     token,
     serverUrl: openai.baseURL, // Use DeepInfra's OpenAI base URL
-    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    model: "mistralai/Mistral-Nemo-Instruct-2407",
     evaluators: [],
     character,
     providers: [timeProvider, boredomProvider],

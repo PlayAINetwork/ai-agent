@@ -416,7 +416,7 @@ export class AgentRuntime implements IAgentRuntime {
   async completion({
     context = "",
     stop = [],
-    model = "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    model = "mistralai/Mistral-Nemo-Instruct-2407",
     serverUrl = 'https://api.deepinfra.com/v1/openai/chat/completions',
     frequency_penalty = 0.0,
     presence_penalty=0.0,
@@ -425,7 +425,7 @@ export class AgentRuntime implements IAgentRuntime {
     max_context_length,
     max_response_length = 4096,
   }): Promise<string> {
-    model="meta-llama/Meta-Llama-3.1-70B-Instruct"
+    model="mistralai/Mistral-Nemo-Instruct-2407"
     let retryLength = 1000; // exponential backoff
     for (let triesLeft = 5; triesLeft > 0; triesLeft--) {
       try {
