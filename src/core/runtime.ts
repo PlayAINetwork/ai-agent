@@ -1,3 +1,11 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+    baseURL: 'https://api.deepinfra.com/v1/openai',
+    apiKey: "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+});
+
+
 import { addHeader, composeContext } from "./context.ts";
 import {
   defaultEvaluators,
@@ -63,6 +71,7 @@ import settings from "./settings.ts";
 import { UUID, type Actor } from "./types.ts";
 import { stringToUuid } from "./uuid.ts";
 import { Keypair } from "@solana/web3.js";
+import { SERVER_URL } from '../test_resources/constants';
 
 /**
  * Represents the runtime environment for an agent, handling message processing,
@@ -111,7 +120,7 @@ export class AgentRuntime implements IAgentRuntime {
   /**
    * The model to use for completion.
    */
-  model = settings.XAI_MODEL || "gpt-4o-mini";
+  model = settings.XAI_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
 
   /**
    * The model to use for embedding.
@@ -407,132 +416,67 @@ export class AgentRuntime implements IAgentRuntime {
   async completion({
     context = "",
     stop = [],
-    model = this.model,
+    model = "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    serverUrl = 'https://api.deepinfra.com/v1/openai/chat/completions',
     frequency_penalty = 0.0,
-    presence_penalty = 0.0,
+    presence_penalty=0.0,
     temperature = 0.3,
-    token = this.token,
-    serverUrl = this.serverUrl,
-    max_context_length = this.getSetting("OPENAI_API_KEY") ? 127000 : 8000,
-    max_response_length = this.getSetting("OPENAI_API_KEY") ? 8192 : 4096,
+    token = "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+    max_context_length,
+    max_response_length = 4096,
   }): Promise<string> {
-
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct"
     let retryLength = 1000; // exponential backoff
     for (let triesLeft = 5; triesLeft > 0; triesLeft--) {
       try {
-        context = await this.trimTokens(
-          context,
-          max_context_length,
-          "gpt-4o-mini",
-        );
-        if (!this.getSetting("OPENAI_API_KEY")) {
-          console.log("queueing text completion");
-          const result = await this.llamaService.queueTextCompletion(
-            context,
-            temperature,
-            stop,
-            frequency_penalty,
-            presence_penalty,
-            max_response_length,
-          );
-          return result;
-        } else {
-          const biasValue = -20.0;
-          const encoding = TikToken.encoding_for_model("gpt-4o-mini");
-
-          const mappedWords = wordsToPunish.map(
-            (word) => encoding.encode(word, [], "all")[0],
-          );
-
-          const tokenIds = [...new Set(mappedWords)];
-
-          const logit_bias = tokenIds.reduce((acc, tokenId) => {
-            acc[tokenId] = biasValue;
-            return acc;
-          }, {});
-
-          const requestOptions = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+        // Prepare request body as per DeepInfra API format
+        const requestBody = {
+          model,
+          messages: [
+            {
+              role: "user",
+              content: context,
             },
-            body: {
-              stop,
-              model,
-              // frequency_penalty,
-              // presence_penalty,
-              temperature,
-              max_tokens: max_response_length,
-              // logit_bias,
-              messages: [
-                {
-                  role: "user",
-                  content: context,
-                },
-              ],
-            },
-          };
-
-          // if the model includes llama, set reptition_penalty to frequency_penalty
-          if (model.includes("llama")) {
-            (requestOptions.body as any).repetition_penalty = frequency_penalty ?? 1.4;
-            // delete presence_penalty and frequency_penalty
-            delete (requestOptions.body as any).presence_penalty;
-            delete (requestOptions.body as any).logit_bias;
-            delete (requestOptions.body as any).frequency_penalty;
-          } else {
-            (requestOptions.body as any).frequency_penalty = frequency_penalty;
-            (requestOptions.body as any).presence_penalty = presence_penalty;
-            (requestOptions.body as any).logit_bias = logit_bias;
-          }
-
-          // stringify the body
-          (requestOptions as any).body = JSON.stringify(requestOptions.body);
-          console.log("requestOptions", requestOptions)
-          const response = await fetch(
-            `${serverUrl}/chat/completions`,
-            requestOptions as any,
-          );
-
-          if (!response.ok) {
-            console.log("response is", response)
-            throw new Error(
-              "OpenAI API Error: " +
-                response.status +
-                " " +
-                response.statusText,
-            );
-          }
-
-          const body = await response.json();
-
-          interface OpenAIResponse {
-            choices: Array<{ message: { content: string } }>;
-          }
-
-          console.log("context is", context)
-
-          const content = (body as OpenAIResponse).choices?.[0]?.message?.content
-
-          console.log("Message is", content)
-
-          if (!content) {
-            throw new Error("No content in response");
-          }
-          return content;
+          ],
+          stop,
+          temperature,
+          max_tokens: max_response_length,
+        };
+  
+        const requestOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(requestBody),
+        };
+  
+        console.log("Sending request to DeepInfra API", requestOptions);
+  
+        // Send request to DeepInfra API
+        const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', requestOptions);
+  
+        if (!response.ok) {
+          console.log("Response error:", response);
+          throw new Error(`DeepInfra API Error: ${response.status} ${response.statusText}`);
         }
+  
+        const body = await response.json();
+        const content = body.choices?.[0]?.message?.content;
+  
+        if (!content) {
+          throw new Error("No content in response");
+        }
+        return content;
       } catch (error) {
         console.error("ERROR:", error);
-        // wait for 2 seconds
         retryLength *= 2;
-        await new Promise((resolve) => setTimeout(resolve, retryLength));
+        await new Promise(resolve => setTimeout(resolve, retryLength));
         console.log("Retrying...");
       }
     }
-    throw new Error(
-      "Failed to complete message after 5 tries, probably a network connectivity, model or API key issue",
-    );
+    throw new Error("Failed to complete message after 5 tries, likely a network or API key issue");
   }
 
   /**
@@ -972,6 +916,7 @@ export class AgentRuntime implements IAgentRuntime {
 
     const result = await this.completion({
       context,
+      max_context_length: this.getSetting("OPENAI_API_KEY") ? 127000 : 8000, // Add this line
     });
 
     const parsedResult = parseJsonArrayFromText(result) as unknown as string[];
@@ -1547,3 +1492,4 @@ Text: ${attachment.text}
     } as State;
   }
 }
+
