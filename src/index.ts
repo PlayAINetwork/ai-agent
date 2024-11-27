@@ -23,6 +23,7 @@ import { TwitterGenerationClient } from "./clients/twitter/generate.ts";
 import { Coinbase, Wallet } from "@coinbase/coinbase-sdk"; 
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid'; 
+import { log_to_file } from './core/logger.ts';
 
 const app = express();
 
@@ -80,6 +81,23 @@ app.get('/logs', (req, res) => {
   req.on("close", () => {
     watcher.close();
   });
+});
+
+app.post('/log', (req: any, res: any) => {
+  const { agentName, datestr, response } = req.body;
+
+  if (!agentName || !datestr || !response) {
+    return res.status(400).json({ error: 'Missing required fields: agentName, datestr, response' });
+  }
+
+  // Construct the log filename
+  const filename = `${agentName}_${datestr}_botcast_response`;
+
+  // Log the data
+  log_to_file(filename, JSON.stringify(response));
+
+  // Respond to the client
+  res.status(200).json({ message: 'Log saved successfully' });
 });
 
 app.listen(4000, () => {
