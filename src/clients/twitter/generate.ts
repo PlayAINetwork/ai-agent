@@ -25,7 +25,7 @@ About {{agentName}} (@{{twitterUserName}}):
 # Task: Generate a post in the voice and style of {{agentName}}, aka @{{twitterUserName}}
 Write a single sentence post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Try to write something totally different than previous posts.
 Do not add commentary or ackwowledge this request, just write the post within 280 characters.
-Your response should not contain any questions. Brief, concise statements only. No emojis. Use \\n\\n (double spaces) between statements.`;
+Your response should not contain any questions. Brief, concise statements only. No emojis. No Quotes.  Use \\n\\n (double spaces) between statements.`;
 
 export class TwitterGenerationClient extends ClientBase {
   onReady() {
@@ -123,7 +123,8 @@ export class TwitterGenerationClient extends ClientBase {
         JSON.stringify(newTweetContent),
       );
 
-      const slice = newTweetContent.replaceAll(/\\n/g, "\n").trim();
+//      const slice = newTweetContent.replaceAll(/\\n/g, "\n").replace(/^"|"$/g, '').trim();
+const slice = newTweetContent.replaceAll(/\\n/g, "\n").trim().replace(/#[a-zA-Z0-9_]+/g, '').replace(/[:;=8x;][-^]?[\\(][oO\\|\\/|{}@\\]*[\\)]/g, '').replace(/^"|"$/g, '').trim();
 
       let content = slice
       // .slice(0, 280);

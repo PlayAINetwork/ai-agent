@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
     baseURL: 'https://api.deepinfra.com/v1/openai',
-    apiKey: "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+    apiKey: "tYkt5wWgORCelp9zhLuNCGEcMRgeNgrO",
 });
 
 
@@ -120,7 +120,7 @@ export class AgentRuntime implements IAgentRuntime {
   /**
    * The model to use for completion.
    */
-  model = settings.XAI_MODEL || "meta-llama/Meta-Llama-3.1-70B-Instruct";
+  model = settings.XAI_MODEL || "mistralai/Mistral-Nemo-Instruct-2407";
 
   /**
    * The model to use for embedding.
@@ -416,16 +416,16 @@ export class AgentRuntime implements IAgentRuntime {
   async completion({
     context = "",
     stop = [],
-    model = "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    model = "mistralai/Mistral-Nemo-Instruct-2407",
     serverUrl = 'https://api.deepinfra.com/v1/openai/chat/completions',
     frequency_penalty = 0.0,
     presence_penalty=0.0,
     temperature = 0.3,
-    token = "L7h02pR7PaQPRU1h71QGjuDL6ghkDTqs",
+    token = "tYkt5wWgORCelp9zhLuNCGEcMRgeNgrO",
     max_context_length,
     max_response_length = 4096,
   }): Promise<string> {
-    model="meta-llama/Meta-Llama-3.1-70B-Instruct"
+    model="mistralai/Mistral-Nemo-Instruct-2407"
     let retryLength = 1000; // exponential backoff
     for (let triesLeft = 5; triesLeft > 0; triesLeft--) {
       try {

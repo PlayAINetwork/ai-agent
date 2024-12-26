@@ -329,7 +329,16 @@ export class TwitterInteractionClient extends ClientBase {
 
     if (response.text) {
       try {
-        if (!this.dryRun) {
+	 
+	 response.text = response.text
+        .replaceAll(/\\n/g, "\n")
+        .trim()
+        .replace(/#[a-zA-Z0-9_]+/g, '')
+        .replace(/[:;=8x;][-^]?[\\(][oO\\|\\/|{}@\\]*[\\)]/g, '')
+        .replace(/^"|"$/g, '')
+        .trim();
+        
+	if (!this.dryRun) {
           const callback: HandlerCallback = async (response: Content) => {
             const memories = await sendTweetChunks(
               this,

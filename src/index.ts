@@ -24,10 +24,11 @@ import { Coinbase, Wallet } from "@coinbase/coinbase-sdk";
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid'; 
 import { log_to_file } from './core/logger.ts';
-
+import cors from 'cors'
+import path from 'path';
 const app = express();
 
-
+app.use(cors())
  app.use(express.json());
   app.post('/replaceCharacterFile', (req, res) => {
     const { filename, fileContent } = req.body;
@@ -37,51 +38,121 @@ const app = express();
     res.send(`File ${characterFilePath} replaced successfully`);
   });
 
+app.get('/olderLogs', (req, res) => {
+    const page = req.query.page as string;
+    const limit = req.query.limit as string;
+    const currentPage = parseInt(page, 10) || 1;
+    const itemsPerPage = parseInt(limit, 10) || 10;
+    const offset = (currentPage - 1) * itemsPerPage;
 
-app.get('/logs', (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+   // const logFiles = fs.readdirSync('logs').sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const logFiles = fs.readdirSync('logs').map(file => {
+    const filePath = path.join('logs', file);
+    const stats = fs.statSync(filePath);
+    
+    // Return file name along with its creation time (birthtime)
+    return { file, birthtime: stats.birthtime };
+  })
+  // Sort files by creation time in descending order (most recent first)
+  .sort((a, b) => b.birthtime.getTime() - a.birthtime.getTime());
 
-  let logFiles = fs.readdirSync('logs');
+// Get paginated logs
+const paginatedLogs = logFiles.slice(offset, offset + itemsPerPage);
+    //const paginatedLogs = logFiles.slice(offset, offset + itemsPerPage);
 
-  const formatLogData = (filename: string, content: string) => {
-    const [agentName, , date, taskType] = filename.split(/[_\s,]+/);
-    const taskName = taskType.replace('.log', '');
-
-    const parsedContent = content.includes('<POLICY_OVERRIDE>')
-      ? "thinking... analyzing"
-      : content;
-
-    return JSON.stringify({
-      taskId: uuidv4(),  // Generate a new UUID for each log entry
-      agentName,
-      taskName,
-      date: new Date().toISOString(),
-      data: parsedContent,
-    });
-  };
-
-  logFiles.forEach((file) => {
-    const filePath = `logs/${file}`;
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    res.write(`data: ${formatLogData(file, fileContent)}\n\n`);
-  });
-
-  const watcher = fs.watch('logs', (eventType, filename) => {
-    if (filename) {
-      const filePath = `logs/${filename}`;
-      if (fs.existsSync(filePath)) {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        res.write(`data: ${formatLogData(filename, fileContent)}\n\n`);
+    const logsData = paginatedLogs.map(file => {
+      const content = fs.readFileSync(`logs/${file.file}`, 'utf8');
+      const [agentName, , date] = file.file.split(/[_\s,]+/);
+      let taskName;
+      if (file.file.includes('search_context')) {
+        taskName = 'search context';
+      } else if (file.file.includes('interaction_context')) {
+        taskName = 'interaction context';
+      } else if (file.file.includes('generate_context')) {
+        taskName = 'generate context';
+      } else if (file.file.includes('generate_response')) {
+        taskName = 'generate response';
+      } else if (file.file.includes('interaction_response')) {
+        taskName = 'interaction response';
+      } else if (file.file.includes('search_response')) {
+        taskName = 'search response';
+      } else if (file.file.includes('search')) {
+        taskName = 'searching tweets';
+      } else {
+        taskName = 'agent_searching_goal';
       }
-    }
+
+      return {
+        taskId: uuidv4(),
+        agentName,
+        taskName,
+        date: new Date().toISOString(),
+        data: content,
+      };
+    });
+
+    res.json(logsData);
   });
 
-  req.on("close", () => {
-    watcher.close();
+
+  app.get('/logs', (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+ 
+  
+    // Slice logFiles array based on pagination
+    
+  
+    const formatLogData = (filename, content) => {
+      const [agentName, , date] = filename.split(/[_\s,]+/);
+  
+      // Define taskName based on filename patterns
+      let taskName;
+      if (filename.includes('search_context')) {
+        taskName = 'search context';
+      } else if (filename.includes('interaction_context')) {
+        taskName = 'interaction context';
+      } else if (filename.includes('generate_context')) {
+        taskName = 'generate context';
+      } else if (filename.includes('generate_response')) {
+        taskName = 'generate response';
+      } else if (filename.includes('interaction_response')) {
+        taskName = 'interaction response';
+      } else if (filename.includes('search_response')) {
+        taskName = 'search response';
+      } else if (filename.includes('search')) {
+        taskName = 'searching tweets';
+      } else {
+        // Default task name if none match
+        taskName = 'agent_serching_goal';
+      }
+  
+  
+      return JSON.stringify({
+        taskId: uuidv4(),
+        agentName,
+        taskName,
+        date: new Date().toISOString(),
+        data: content,
+      });
+    };
+  
+    // Watch for new log entries
+    const watcher = fs.watch('logs', (eventType, filename) => {
+      if (filename) {
+        const filePath = `logs/${filename}`;
+        if (fs.existsSync(filePath)) {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          res.write(`data: ${formatLogData(filename, fileContent)}\n\n`);
+        }
+      }
+    });
+  
+    req.on("close", () => {
+      watcher.close();
+    });
   });
-});
 
 app.post('/log', (req: any, res: any) => {
   const { agentName, datestr, response } = req.body;
@@ -285,13 +356,13 @@ async function startAgent(character: Character) {
     const twitterSearchClient = new TwitterSearchClient(runtime);
     await wait();
     console.log("Starting interaction client");
-    const twitterInteractionClient = new TwitterInteractionClient(runtime);
+    //const twitterInteractionClient = new TwitterInteractionClient(runtime);
     await wait();
     console.log("Starting generation client");
     const twitterGenerationClient = new TwitterGenerationClient(runtime);
 
     return {
-      twitterInteractionClient,
+      //twitterInteractionClient,
       twitterSearchClient,
       twitterGenerationClient,
     };
@@ -321,8 +392,8 @@ async function startAgent(character: Character) {
   // }
 
   if (character.clients.map((str) => str.toLowerCase()).includes("twitter")) {
-    const { twitterInteractionClient, twitterSearchClient, twitterGenerationClient } = await startTwitter(runtime);
-    clients.push(twitterInteractionClient, twitterSearchClient, twitterGenerationClient);
+    const {  twitterSearchClient, twitterGenerationClient } = await startTwitter(runtime);
+    clients.push( twitterSearchClient, twitterGenerationClient);
   }
 
   directClient.registerAgent(directRuntime);
