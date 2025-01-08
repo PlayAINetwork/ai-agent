@@ -128,7 +128,7 @@ export class TwitterGenerationClient extends ClientBase {
 
       const slice = newTweetContent.replaceAll(/\\n/g, "\n").trim();
 
-      let content = slice
+      let content = slice.replace(/^"|"$/g, '');
       // .slice(0, 280);
       // // if its bigger than 280, delete the last line
       // if (content.length > 280) {
