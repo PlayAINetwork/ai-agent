@@ -61,22 +61,22 @@ const paginatedLogs = logFiles.slice(offset, offset + itemsPerPage);
     //const paginatedLogs = logFiles.slice(offset, offset + itemsPerPage);
 
     const logsData = paginatedLogs.map(file => {
-      const content = fs.readFileSync(`logs/${file}`, 'utf8');
-      const [agentName, , date] = file.split(/[_\s,]+/);
+      const content = fs.readFileSync(`logs/${file.file}`, 'utf8');
+      const [agentName, , date] = file.file.split(/[_\s,]+/);
       let taskName;
-      if (file.includes('search_context')) {
+      if (file.file.includes('search_context')) {
         taskName = 'search context';
-      } else if (file.includes('interaction_context')) {
+      } else if (file.file.includes('interaction_context')) {
         taskName = 'interaction context';
-      } else if (file.includes('generate_context')) {
+      } else if (file.file.includes('generate_context')) {
         taskName = 'generate context';
-      } else if (file.includes('generate_response')) {
+      } else if (file.file.includes('generate_response')) {
         taskName = 'generate response';
-      } else if (file.includes('interaction_response')) {
+      } else if (file.file.includes('interaction_response')) {
         taskName = 'interaction response';
-      } else if (file.includes('search_response')) {
+      } else if (file.file.includes('search_response')) {
         taskName = 'search response';
-      } else if (file.includes('search')) {
+      } else if (file.file.includes('search')) {
         taskName = 'searching tweets';
       } else {
         taskName = 'agent_searching_goal';
